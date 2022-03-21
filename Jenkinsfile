@@ -1,33 +1,39 @@
 pipeline {
+    
     agent any
-	
-
- stages {
-      stage('checkout') {
-           steps {
-             
-                git branch: 'main', url: 'https://github.com/suman7799/git_jenkins_nexus.git'
-             
-          }
-        }
-       
-
-  stage('Docker Build and Tag') {
-           steps {
-              
-                sh 'docker build -t nexusone:latest .' 
-                sh 'docker tag nexusone admin/nexusone:$BUILD_NUMBER'
-               
-          }
-        }
-  stage('Publish image to nexus') {
+    
+    environment {
+        imageName = "nexusone"
+        registryCredentials = "admin"
+        registry = "http://192.168.56.13/"
+        dockerImage = ''
+    }
+    
+     stages {
+        stage('Code checkout') {
             steps {
-        withNexusRegistry([ credentialsId: "admin", url: "http://192.168.56.13:8081/repository/devops_private/" ]) {
-           sh  'docker push admin/nexusone:$version' 
-		}
-                  
-          }
+                 git branch: 'main', url: 'https://github.com/suman7799/git_jenkins_nexus.git'
+				 }
         }
 		
+      }
+    
+    // Building Docker images
+    stage('Building image') {
+      steps{
+        script {
+          dockerImage = docker.build imageName
+        }
+      }
     }
-}
+    // Uploading Docker images into Nexus Registry
+     stage('Uploading to Nexus') {
+     steps{  
+         script {
+             docker.withRegistry( 'http://'+registry, registryCredentials ) {
+             dockerImage.push('latest')
+          }
+        }
+      }
+    }
+   }
