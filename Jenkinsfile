@@ -1,54 +1,33 @@
 pipeline {
-    
     agent any
-    
-    environment {
-        imageName = "nexusone"
-        registryCredentials = "nexus"
-        registry = "ec2-13-58-223-172.us-east-2.compute.amazonaws.com:8085/"
-        dockerImage = ''
-    }
-    
-    stages {
-        stage('Code checkout') {
-            steps {
-                checkout([$class: 'GitSCM', branches: [[name: '*/master']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: '', url: 'https://bitbucket.org/ananthkannan/phprepo/']]])                   }
-        }
-    
-    // Building Docker images
-    stage('Building image') {
-      steps{
-        script {
-          dockerImage = docker.build nexusone
-        }
-      }
-    }
+	
 
-    // Uploading Docker images into Nexus Registry
-    stage('Uploading to Nexus') {
-     steps{  
-         script {
-             docker.withRegistry( 'http://'+registry, registryCredentials ) {
-             dockerImage.push('latest')
+ stages {
+      stage('checkout') {
+           steps {
+             
+                git branch: 'main', url: 'https://github.com/suman7799/git_jenkins_nexus.git'
+             
           }
         }
-      }
-    }
-    
-    // Stopping Docker containers for cleaner Docker run
-    stage('stop previous containers') {
-         steps {
-            sh 'docker ps -f name=myphpcontainer -q | xargs --no-run-if-empty docker container stop'
-            sh 'docker container ls -a -fname=myphpcontainer -q | xargs -r docker container rm'
-         }
-       }
-      
-    stage('Docker Run') {
-       steps{
-         script {
-                sh 'docker run -d -p 80:80 --rm --name myphpcontainer ' + registry + imageName
-            }
-         }
-      }    
+       
+
+  stage('Docker Build and Tag') {
+           steps {
+              
+                sh 'docker build -t nexusone:latest .' 
+                sh 'docker tag nexusone admin/nexusone:$BUILD_NUMBER'
+               
+          }
+        }
+  stage('Publish image to nexus') {
+            steps {
+        withNexusRegistry([ credentialsId: "admin", url: "http://192.168.56.13:8081/repository/devops_private/" ]) {
+           sh  'docker push admin/nexusone:$version' 
+		}
+                  
+          }
+        }
+		
     }
 }
