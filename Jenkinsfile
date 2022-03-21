@@ -3,8 +3,8 @@ pipeline {
 	environment {
         imageName = "nexusone"
         registryCredentials = "admin"
-        registry = "http://192.168.56.13:8081/"
-        dockerImage = ''
+        registry = "http://192.168.56.13:8081/#browse/browse"
+        dockerImage = ' '
         }
 
  stages {
@@ -20,14 +20,14 @@ pipeline {
       stage('Docker Build') {
            steps {
               
-                dockerImage = docker.build nexusone 
+                dockerImage = docker.build  imageName
                 
                
           }
         }
       stage('Publish image to nexus') {
             steps {
-                    docker.withRegistry( 'http://192.168.56.13:8081/#browse/browse', admin ) {
+                    docker.withRegistry( 'http://192.168.56.13:8081/#browse/browse', registryCredentials ) {
                     dockerImage.push('latest') 
 		         }
                   
